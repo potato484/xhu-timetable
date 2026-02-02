@@ -1,0 +1,18 @@
+[
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/layout-v21/notification_template_icon_group.xml",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/layout-v21/notification_template_icon_group.xml"
+    },
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/layout-v21/notification_action_tombstone.xml",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/layout-v21/notification_action_tombstone.xml"
+    },
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/layout-v21/notification_template_custom_big.xml",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/layout-v21/notification_template_custom_big.xml"
+    },
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/layout-v21/notification_action.xml",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/layout-v21/notification_action.xml"
+    }
+]

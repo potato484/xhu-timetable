@@ -1,0 +1,765 @@
+-- XHU Timetable DB schema (SQLDelight 2.x)
+-- Schema version: 1
+--
+-- Type adapter hints (physical storage -> Kotlin types):
+-- - List<Int>     -> TEXT (JSON, e.g. "[1,2,3]")
+-- - List<String>  -> TEXT (JSON, e.g. "[\"A\",\"B\"]")
+-- - LocalTime     -> TEXT (ISO-8601, e.g. "08:30")
+-- - Instant       -> INTEGER (epoch millis)
+-- - DayOfWeek     -> INTEGER (ISO day number: 1=Mon .. 7=Sun)
+-- - Boolean       -> INTEGER (0/1)
+-- - Gender enum   -> TEXT ("MALE" / "FEMALE" / "UNKNOWN")
+--
+-- Design notes:
+-- - Data partition key: (studentId, termYear, termIndex)
+-- - Update strategy: replace-all per partition (atomic transaction in Kotlin layer)
+-- - Offline write is FORBIDDEN by product design; DML below is intended for sync only.
+--
+-- Migrations / schema versioning:
+-- - Bump SQLDelight schemaVersion in Gradle when changing schema
+-- - Add .sqm migration files under src/commonMain/sqldelight/migrations
+
+CREATE TABLE IF NOT EXISTS User (
+    studentId TEXT NOT NULL PRIMARY KEY,
+    tokenEncrypted TEXT NOT NULL, -- encrypted session token (store as base64/hex)
+    name TEXT NOT NULL,
+    gender TEXT NOT NULL, -- Gender enum name
+    xhuGrade INTEGER NOT NULL,
+    college TEXT NOT NULL,
+    majorName TEXT NOT NULL,
+    className TEXT NOT NULL,
+    majorDirection TEXT NOT NULL DEFAULT ''
+);
+
+-- Current selected term per user
+CREATE TABLE IF NOT EXISTS SelectedTerm (
+    studentId TEXT NOT NULL PRIMARY KEY,
+    termYear INTEGER NOT NULL,
+    termIndex INTEGER NOT NULL
+);
+
+-- Last successful full sync time per partition
+CREATE TABLE IF NOT EXISTS SyncState (
+    studentId TEXT NOT NULL,
+    termYear INTEGER NOT NULL,
+    termIndex INTEGER NOT NULL,
+    lastSyncAt INTEGER NOT NULL, -- Instant epoch millis
+    PRIMARY KEY(studentId, termYear, termIndex)
+);
+
+-- Main course timetable
+CREATE TABLE IF NOT EXISTS Course (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    studentId TEXT NOT NULL,
+    termYear INTEGER NOT NULL,
+    termIndex INTEGER NOT NULL,
+    courseName TEXT NOT NULL,
+    weekStr TEXT NOT NULL,
+    weekList TEXT NOT NULL, -- JSON List<Int>
+    day INTEGER NOT NULL, -- DayOfWeek (1-7)
+    dayIndex INTEGER NOT NULL, -- usually 1-7; used for ordering/indexing
+    startDayTime INTEGER NOT NULL,
+    endDayTime INTEGER NOT NULL,
+    startTime TEXT NOT NULL, -- LocalTime ISO
+    endTime TEXT NOT NULL, -- LocalTime ISO
+    location TEXT NOT NULL,
+    teacher TEXT NOT NULL,
+    extraData TEXT NOT NULL, -- JSON List<String>
+    credit REAL NOT NULL,
+    courseType TEXT NOT NULL,
+    courseCodeType TEXT NOT NULL,
+    courseCodeFlag TEXT NOT NULL,
+    campus TEXT NOT NULL
+);
+
+-- Experiment course timetable
+CREATE TABLE IF NOT EXISTS ExperimentCourse (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    studentId TEXT NOT NULL,
+    termYear INTEGER NOT NULL,
+    termIndex INTEGER NOT NULL,
+    courseName TEXT NOT NULL,
+    experimentProjectName TEXT NOT NULL,
+    experimentGroupName TEXT NOT NULL,
+    weekStr TEXT NOT NULL,
+    weekList TEXT NOT NULL, -- JSON List<Int>
+    day INTEGER NOT NULL, -- DayOfWeek (1-7)
+    dayIndex INTEGER NOT NULL,
+    startDayTime INTEGER NOT NULL,
+    endDayTime INTEGER NOT NULL,
+    startTime TEXT NOT NULL, -- LocalTime ISO
+    endTime TEXT NOT NULL, -- LocalTime ISO
+    location TEXT NOT NULL,
+    teacherName TEXT NOT NULL,
+    region TEXT NOT NULL DEFAULT ''
+);
+
+-- Practical course timetable
+CREATE TABLE IF NOT EXISTS PracticalCourse (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    studentId TEXT NOT NULL,
+    termYear INTEGER NOT NULL,
+    termIndex INTEGER NOT NULL,
+    courseName TEXT NOT NULL,
+    weekStr TEXT NOT NULL,
+    weekList TEXT NOT NULL, -- JSON List<Int>
+    credit REAL NOT NULL,
+    teacher TEXT NOT NULL
+);
+
+-- User-defined course (synced from server; read-only locally)
+CREATE TABLE IF NOT EXISTS CustomCourse (
+    studentId TEXT NOT NULL,
+    termYear INTEGER NOT NULL,
+    termIndex INTEGER NOT NULL,
+    courseId INTEGER NOT NULL, -- server id
+    courseName TEXT NOT NULL,
+    weekStr TEXT NOT NULL,
+    weekList TEXT NOT NULL, -- JSON List<Int>
+    day INTEGER NOT NULL, -- DayOfWeek (1-7)
+    dayIndex INTEGER NOT NULL,
+    startDayTime INTEGER NOT NULL,
+    endDayTime INTEGER NOT NULL,
+    startTime TEXT NOT NULL, -- LocalTime ISO
+    endTime TEXT NOT NULL, -- LocalTime ISO
+    location TEXT NOT NULL,
+    teacher TEXT NOT NULL,
+    extraData TEXT NOT NULL, -- JSON List<String>
+    createTime INTEGER NOT NULL, -- Instant epoch millis
+    PRIMARY KEY(studentId, termYear, termIndex, courseId)
+);
+
+-- User-defined calendar thing (synced from server; read-only locally)
+CREATE TABLE IF NOT EXISTS CustomThing (
+    studentId TEXT NOT NULL,
+    thingId INTEGER NOT NULL, -- server id
+    title TEXT NOT NULL,
+    location TEXT NOT NULL,
+    allDay INTEGER NOT NULL, -- Boolean 0/1
+    startTime INTEGER NOT NULL, -- Instant epoch millis
+    endTime INTEGER NOT NULL, -- Instant epoch millis
+    remark TEXT NOT NULL,
+    color TEXT NOT NULL,
+    metadata TEXT NOT NULL,
+    createTime INTEGER NOT NULL, -- Instant epoch millis
+    PRIMARY KEY(studentId, thingId)
+);
+
+-- Indexes (optimize partition + day queries)
+CREATE INDEX IF NOT EXISTS idx_course_partition ON Course(studentId, termYear, termIndex);
+CREATE INDEX IF NOT EXISTS idx_course_partition_dayIndex ON Course(studentId, termYear, termIndex, dayIndex);
+
+CREATE INDEX IF NOT EXISTS idx_experimentCourse_partition ON ExperimentCourse(studentId, termYear, termIndex);
+CREATE INDEX IF NOT EXISTS idx_experimentCourse_partition_dayIndex ON ExperimentCourse(studentId, termYear, termIndex, dayIndex);
+
+CREATE INDEX IF NOT EXISTS idx_practicalCourse_partition ON PracticalCourse(studentId, termYear, termIndex);
+
+-- Primary key already indexes (studentId, termYear, termIndex); keep dayIndex index for fast day filtering
+CREATE INDEX IF NOT EXISTS idx_customCourse_partition_dayIndex ON CustomCourse(studentId, termYear, termIndex, dayIndex);
+
+-- Helps time-ordered queries per user
+CREATE INDEX IF NOT EXISTS idx_customThing_student_startTime ON CustomThing(studentId, startTime);
+
+-- ------------------------------------------------------------
+-- User queries
+-- ------------------------------------------------------------
+
+selectUser:
+SELECT * FROM User
+WHERE studentId = :studentId;
+
+selectAllUsers:
+SELECT * FROM User
+ORDER BY studentId;
+
+upsertUser:
+INSERT OR REPLACE INTO User(
+    studentId,
+    tokenEncrypted,
+    name,
+    gender,
+    xhuGrade,
+    college,
+    majorName,
+    className,
+    majorDirection
+) VALUES (
+    :studentId,
+    :tokenEncrypted,
+    :name,
+    :gender,
+    :xhuGrade,
+    :college,
+    :majorName,
+    :className,
+    :majorDirection
+);
+
+deleteUser:
+DELETE FROM User
+WHERE studentId = :studentId;
+
+-- ------------------------------------------------------------
+-- SelectedTerm queries
+-- ------------------------------------------------------------
+
+selectSelectedTerm:
+SELECT * FROM SelectedTerm
+WHERE studentId = :studentId;
+
+upsertSelectedTerm:
+INSERT OR REPLACE INTO SelectedTerm(studentId, termYear, termIndex)
+VALUES (:studentId, :termYear, :termIndex)
+;
+
+deleteSelectedTerm:
+DELETE FROM SelectedTerm
+WHERE studentId = :studentId;
+
+-- ------------------------------------------------------------
+-- SyncState queries
+-- ------------------------------------------------------------
+
+selectSyncState:
+SELECT * FROM SyncState
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+selectLastSyncAt:
+SELECT lastSyncAt FROM SyncState
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+upsertSyncState:
+INSERT OR REPLACE INTO SyncState(studentId, termYear, termIndex, lastSyncAt)
+VALUES (:studentId, :termYear, :termIndex, :lastSyncAt)
+;
+
+deleteSyncState:
+DELETE FROM SyncState
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+-- ------------------------------------------------------------
+-- Course queries
+-- ------------------------------------------------------------
+
+selectCoursesByPartition:
+SELECT * FROM Course
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex
+ORDER BY dayIndex, startDayTime, startTime;
+
+selectCoursesByPartitionAndDay:
+SELECT * FROM Course
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex AND dayIndex = :dayIndex
+ORDER BY startDayTime, startTime;
+
+selectCourseById:
+SELECT * FROM Course
+WHERE id = :id;
+
+insertCourse:
+INSERT INTO Course(
+    studentId,
+    termYear,
+    termIndex,
+    courseName,
+    weekStr,
+    weekList,
+    day,
+    dayIndex,
+    startDayTime,
+    endDayTime,
+    startTime,
+    endTime,
+    location,
+    teacher,
+    extraData,
+    credit,
+    courseType,
+    courseCodeType,
+    courseCodeFlag,
+    campus
+) VALUES (
+    :studentId,
+    :termYear,
+    :termIndex,
+    :courseName,
+    :weekStr,
+    :weekList,
+    :day,
+    :dayIndex,
+    :startDayTime,
+    :endDayTime,
+    :startTime,
+    :endTime,
+    :location,
+    :teacher,
+    :extraData,
+    :credit,
+    :courseType,
+    :courseCodeType,
+    :courseCodeFlag,
+    :campus
+);
+
+updateCourseById:
+UPDATE Course SET
+    courseName = :courseName,
+    weekStr = :weekStr,
+    weekList = :weekList,
+    day = :day,
+    dayIndex = :dayIndex,
+    startDayTime = :startDayTime,
+    endDayTime = :endDayTime,
+    startTime = :startTime,
+    endTime = :endTime,
+    location = :location,
+    teacher = :teacher,
+    extraData = :extraData,
+    credit = :credit,
+    courseType = :courseType,
+    courseCodeType = :courseCodeType,
+    courseCodeFlag = :courseCodeFlag,
+    campus = :campus
+WHERE id = :id;
+
+deleteCourseById:
+DELETE FROM Course
+WHERE id = :id;
+
+deleteCoursesByPartition:
+DELETE FROM Course
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+countCoursesByPartition:
+SELECT COUNT(*) FROM Course
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+-- ------------------------------------------------------------
+-- ExperimentCourse queries
+-- ------------------------------------------------------------
+
+selectExperimentCoursesByPartition:
+SELECT * FROM ExperimentCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex
+ORDER BY dayIndex, startDayTime, startTime;
+
+selectExperimentCoursesByPartitionAndDay:
+SELECT * FROM ExperimentCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex AND dayIndex = :dayIndex
+ORDER BY startDayTime, startTime;
+
+selectExperimentCourseById:
+SELECT * FROM ExperimentCourse
+WHERE id = :id;
+
+insertExperimentCourse:
+INSERT INTO ExperimentCourse(
+    studentId,
+    termYear,
+    termIndex,
+    courseName,
+    experimentProjectName,
+    experimentGroupName,
+    weekStr,
+    weekList,
+    day,
+    dayIndex,
+    startDayTime,
+    endDayTime,
+    startTime,
+    endTime,
+    location,
+    teacherName,
+    region
+) VALUES (
+    :studentId,
+    :termYear,
+    :termIndex,
+    :courseName,
+    :experimentProjectName,
+    :experimentGroupName,
+    :weekStr,
+    :weekList,
+    :day,
+    :dayIndex,
+    :startDayTime,
+    :endDayTime,
+    :startTime,
+    :endTime,
+    :location,
+    :teacherName,
+    :region
+);
+
+updateExperimentCourseById:
+UPDATE ExperimentCourse SET
+    courseName = :courseName,
+    experimentProjectName = :experimentProjectName,
+    experimentGroupName = :experimentGroupName,
+    weekStr = :weekStr,
+    weekList = :weekList,
+    day = :day,
+    dayIndex = :dayIndex,
+    startDayTime = :startDayTime,
+    endDayTime = :endDayTime,
+    startTime = :startTime,
+    endTime = :endTime,
+    location = :location,
+    teacherName = :teacherName,
+    region = :region
+WHERE id = :id;
+
+deleteExperimentCourseById:
+DELETE FROM ExperimentCourse
+WHERE id = :id;
+
+deleteExperimentCoursesByPartition:
+DELETE FROM ExperimentCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+countExperimentCoursesByPartition:
+SELECT COUNT(*) FROM ExperimentCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+-- ------------------------------------------------------------
+-- PracticalCourse queries
+-- ------------------------------------------------------------
+
+selectPracticalCoursesByPartition:
+SELECT * FROM PracticalCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex
+ORDER BY courseName;
+
+selectPracticalCourseById:
+SELECT * FROM PracticalCourse
+WHERE id = :id;
+
+insertPracticalCourse:
+INSERT INTO PracticalCourse(
+    studentId,
+    termYear,
+    termIndex,
+    courseName,
+    weekStr,
+    weekList,
+    credit,
+    teacher
+) VALUES (
+    :studentId,
+    :termYear,
+    :termIndex,
+    :courseName,
+    :weekStr,
+    :weekList,
+    :credit,
+    :teacher
+);
+
+updatePracticalCourseById:
+UPDATE PracticalCourse SET
+    courseName = :courseName,
+    weekStr = :weekStr,
+    weekList = :weekList,
+    credit = :credit,
+    teacher = :teacher
+WHERE id = :id;
+
+deletePracticalCourseById:
+DELETE FROM PracticalCourse
+WHERE id = :id;
+
+deletePracticalCoursesByPartition:
+DELETE FROM PracticalCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+countPracticalCoursesByPartition:
+SELECT COUNT(*) FROM PracticalCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+-- ------------------------------------------------------------
+-- CustomCourse queries
+-- ------------------------------------------------------------
+
+selectCustomCoursesByPartition:
+SELECT * FROM CustomCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex
+ORDER BY dayIndex, startDayTime, startTime;
+
+selectCustomCoursesByPartitionAndDay:
+SELECT * FROM CustomCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex AND dayIndex = :dayIndex
+ORDER BY startDayTime, startTime;
+
+selectCustomCourseById:
+SELECT * FROM CustomCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex AND courseId = :courseId;
+
+upsertCustomCourse:
+INSERT OR REPLACE INTO CustomCourse(
+    studentId,
+    termYear,
+    termIndex,
+    courseId,
+    courseName,
+    weekStr,
+    weekList,
+    day,
+    dayIndex,
+    startDayTime,
+    endDayTime,
+    startTime,
+    endTime,
+    location,
+    teacher,
+    extraData,
+    createTime
+) VALUES (
+    :studentId,
+    :termYear,
+    :termIndex,
+    :courseId,
+    :courseName,
+    :weekStr,
+    :weekList,
+    :day,
+    :dayIndex,
+    :startDayTime,
+    :endDayTime,
+    :startTime,
+    :endTime,
+    :location,
+    :teacher,
+    :extraData,
+    :createTime
+);
+
+deleteCustomCourseById:
+DELETE FROM CustomCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex AND courseId = :courseId;
+
+deleteCustomCoursesByPartition:
+DELETE FROM CustomCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+countCustomCoursesByPartition:
+SELECT COUNT(*) FROM CustomCourse
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+-- ------------------------------------------------------------
+-- CustomThing queries
+-- ------------------------------------------------------------
+
+selectCustomThingsByStudent:
+SELECT * FROM CustomThing
+WHERE studentId = :studentId
+ORDER BY startTime, endTime;
+
+selectCustomThingById:
+SELECT * FROM CustomThing
+WHERE studentId = :studentId AND thingId = :thingId;
+
+upsertCustomThing:
+INSERT OR REPLACE INTO CustomThing(
+    studentId,
+    thingId,
+    title,
+    location,
+    allDay,
+    startTime,
+    endTime,
+    remark,
+    color,
+    metadata,
+    createTime
+) VALUES (
+    :studentId,
+    :thingId,
+    :title,
+    :location,
+    :allDay,
+    :startTime,
+    :endTime,
+    :remark,
+    :color,
+    :metadata,
+    :createTime
+);
+
+deleteCustomThingById:
+DELETE FROM CustomThing
+WHERE studentId = :studentId AND thingId = :thingId;
+
+deleteCustomThingsByStudent:
+DELETE FROM CustomThing
+WHERE studentId = :studentId;
+
+-- ------------------------------------------------------------
+-- Cascade delete (for account logout/removal)
+-- ------------------------------------------------------------
+
+deleteAllDataByStudent:
+DELETE FROM SelectedTerm WHERE studentId = :studentId;
+
+deleteAllSyncStateByStudent:
+DELETE FROM SyncState WHERE studentId = :studentId;
+
+deleteAllCoursesByStudent:
+DELETE FROM Course WHERE studentId = :studentId;
+
+deleteAllExperimentCoursesByStudent:
+DELETE FROM ExperimentCourse WHERE studentId = :studentId;
+
+deleteAllPracticalCoursesByStudent:
+DELETE FROM PracticalCourse WHERE studentId = :studentId;
+
+deleteAllCustomCoursesByStudent:
+DELETE FROM CustomCourse WHERE studentId = :studentId;
+
+-- ============================================================
+-- Settings table (generic key-value store with scoping)
+-- ============================================================
+-- Scope types:
+-- - GLOBAL: app-wide settings (scopeId = "")
+-- - STUDENT: per-user settings (scopeId = studentId)
+-- - PARTITION: per-term settings (scopeId = "studentId:termYear:termIndex")
+
+CREATE TABLE IF NOT EXISTS Setting (
+    scope TEXT NOT NULL,
+    scopeId TEXT NOT NULL,
+    name TEXT NOT NULL,
+    value TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL,
+    PRIMARY KEY(scope, scopeId, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_setting_scope ON Setting(scope, scopeId);
+
+selectSetting:
+SELECT value FROM Setting
+WHERE scope = :scope AND scopeId = :scopeId AND name = :name;
+
+selectSettingsByScope:
+SELECT * FROM Setting
+WHERE scope = :scope AND scopeId = :scopeId;
+
+upsertSetting:
+INSERT OR REPLACE INTO Setting(scope, scopeId, name, value, updatedAt)
+VALUES (:scope, :scopeId, :name, :value, :updatedAt);
+
+deleteSetting:
+DELETE FROM Setting
+WHERE scope = :scope AND scopeId = :scopeId AND name = :name;
+
+deleteSettingsByScope:
+DELETE FROM Setting
+WHERE scope = :scope AND scopeId = :scopeId;
+
+-- ============================================================
+-- CourseColor table (custom course colors per user)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS CourseColor (
+    studentId TEXT NOT NULL,
+    courseName TEXT NOT NULL,
+    colorHex TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL,
+    PRIMARY KEY(studentId, courseName)
+);
+
+CREATE INDEX IF NOT EXISTS idx_courseColor_student ON CourseColor(studentId);
+
+selectCourseColor:
+SELECT colorHex FROM CourseColor
+WHERE studentId = :studentId AND courseName = :courseName;
+
+selectCourseColorsByStudent:
+SELECT * FROM CourseColor
+WHERE studentId = :studentId;
+
+upsertCourseColor:
+INSERT OR REPLACE INTO CourseColor(studentId, courseName, colorHex, updatedAt)
+VALUES (:studentId, :courseName, :colorHex, :updatedAt);
+
+deleteCourseColor:
+DELETE FROM CourseColor
+WHERE studentId = :studentId AND courseName = :courseName;
+
+deleteCourseColorsByStudent:
+DELETE FROM CourseColor
+WHERE studentId = :studentId;
+
+-- ============================================================
+-- Notice table (announcement cache)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Notice (
+    noticeId INTEGER NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    actionsJson TEXT NOT NULL,
+    released INTEGER NOT NULL,
+    createTime INTEGER NOT NULL,
+    updateTime INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_notice_updateTime ON Notice(updateTime DESC);
+
+selectNoticeById:
+SELECT * FROM Notice
+WHERE noticeId = :noticeId;
+
+selectAllNotices:
+SELECT * FROM Notice
+ORDER BY updateTime DESC;
+
+selectNoticesPaged:
+SELECT * FROM Notice
+ORDER BY updateTime DESC
+LIMIT :limit OFFSET :offset;
+
+selectLatestNoticeId:
+SELECT COALESCE(MAX(noticeId), 0) FROM Notice;
+
+upsertNotice:
+INSERT OR REPLACE INTO Notice(noticeId, title, content, actionsJson, released, createTime, updateTime)
+VALUES (:noticeId, :title, :content, :actionsJson, :released, :createTime, :updateTime);
+
+deleteNoticeById:
+DELETE FROM Notice
+WHERE noticeId = :noticeId;
+
+deleteAllNotices:
+DELETE FROM Notice;
+
+countNotices:
+SELECT COUNT(*) FROM Notice;
+
+-- ============================================================
+-- Background table (background image cache)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Background (
+    backgroundId INTEGER NOT NULL PRIMARY KEY,
+    resourceId INTEGER NOT NULL,
+    thumbnailUrl TEXT NOT NULL,
+    imageUrl TEXT NOT NULL,
+    updatedAt INTEGER NOT NULL
+);
+
+selectBackgroundById:
+SELECT * FROM Background
+WHERE backgroundId = :backgroundId;
+
+selectAllBackgrounds:
+SELECT * FROM Background
+ORDER BY backgroundId;
+
+upsertBackground:
+INSERT OR REPLACE INTO Background(backgroundId, resourceId, thumbnailUrl, imageUrl, updatedAt)
+VALUES (:backgroundId, :resourceId, :thumbnailUrl, :imageUrl, :updatedAt);
+
+deleteBackgroundById:
+DELETE FROM Background
+WHERE backgroundId = :backgroundId;
+
+deleteAllBackgrounds:
+DELETE FROM Background;

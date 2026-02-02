@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/drawable-mdpi-v4/notification_bg_normal_pressed.9.png",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/drawable-mdpi-v4/notification_bg_normal_pressed.9.png"
+    },
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/drawable-mdpi-v4/notification_bg_low_pressed.9.png",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/drawable-mdpi-v4/notification_bg_low_pressed.9.png"
+    },
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/drawable-mdpi-v4/notification_bg_normal.9.png",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/drawable-mdpi-v4/notification_bg_normal.9.png"
+    },
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/drawable-mdpi-v4/notification_bg_low_normal.9.png",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/drawable-mdpi-v4/notification_bg_low_normal.9.png"
+    },
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/drawable-mdpi-v4/notify_panel_notification_icon_bg.png",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-core-1.15.0-28:/drawable-mdpi-v4/notify_panel_notification_icon_bg.png"
+    }
+]

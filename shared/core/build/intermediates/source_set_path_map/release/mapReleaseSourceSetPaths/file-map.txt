@@ -1,0 +1,9 @@
+vip.mystery0.xhu.timetable.shared.core-pngs-0 /home/potato/watermelon/xhu-timetable/shared/core/build/generated/res/pngs/release
+vip.mystery0.xhu.timetable.shared.core-resValues-1 /home/potato/watermelon/xhu-timetable/shared/core/build/generated/res/resValues/release
+vip.mystery0.xhu.timetable.shared.core-mergeReleaseResources-2 /home/potato/watermelon/xhu-timetable/shared/core/build/intermediates/incremental/release/mergeReleaseResources/merged.dir
+vip.mystery0.xhu.timetable.shared.core-mergeReleaseResources-3 /home/potato/watermelon/xhu-timetable/shared/core/build/intermediates/incremental/release/mergeReleaseResources/stripped.dir
+vip.mystery0.xhu.timetable.shared.core-release-4 /home/potato/watermelon/xhu-timetable/shared/core/build/intermediates/merged_res/release/mergeReleaseResources
+vip.mystery0.xhu.timetable.shared.core-androidMain-5 /home/potato/watermelon/xhu-timetable/shared/core/src/androidMain/res
+vip.mystery0.xhu.timetable.shared.core-androidRelease-6 /home/potato/watermelon/xhu-timetable/shared/core/src/androidRelease/res
+vip.mystery0.xhu.timetable.shared.core-main-7 /home/potato/watermelon/xhu-timetable/shared/core/src/main/res
+vip.mystery0.xhu.timetable.shared.core-release-8 /home/potato/watermelon/xhu-timetable/shared/core/src/release/res

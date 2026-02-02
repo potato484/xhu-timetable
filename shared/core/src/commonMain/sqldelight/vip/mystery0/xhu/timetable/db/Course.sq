@@ -1,0 +1,51 @@
+-- Course table with partition key (studentId, termYear, termIndex)
+CREATE TABLE Course (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    studentId TEXT NOT NULL,
+    termYear INTEGER NOT NULL,
+    termIndex INTEGER NOT NULL,
+    courseName TEXT NOT NULL,
+    weekStr TEXT NOT NULL,
+    weekList TEXT NOT NULL,
+    dayIndex INTEGER NOT NULL,
+    startDayTime INTEGER NOT NULL,
+    endDayTime INTEGER NOT NULL,
+    startTime TEXT NOT NULL,
+    endTime TEXT NOT NULL,
+    location TEXT NOT NULL,
+    teacher TEXT NOT NULL,
+    extraData TEXT NOT NULL,
+    campus TEXT NOT NULL,
+    courseType TEXT NOT NULL,
+    credit REAL NOT NULL,
+    courseCodeType TEXT NOT NULL,
+    courseCodeFlag TEXT NOT NULL
+);
+
+CREATE INDEX idx_course_partition ON Course(studentId, termYear, termIndex);
+CREATE INDEX idx_course_day ON Course(studentId, termYear, termIndex, dayIndex);
+
+-- Select all courses for a partition
+selectByPartition:
+SELECT * FROM Course
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex
+ORDER BY dayIndex, startDayTime;
+
+-- Delete all courses for a partition (used in replace-all)
+deleteByPartition:
+DELETE FROM Course
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;
+
+-- Insert a single course
+insert:
+INSERT INTO Course(
+    studentId, termYear, termIndex, courseName, weekStr, weekList,
+    dayIndex, startDayTime, endDayTime, startTime, endTime,
+    location, teacher, extraData, campus, courseType, credit,
+    courseCodeType, courseCodeFlag
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Count courses in partition (for testing)
+countByPartition:
+SELECT COUNT(*) FROM Course
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex;

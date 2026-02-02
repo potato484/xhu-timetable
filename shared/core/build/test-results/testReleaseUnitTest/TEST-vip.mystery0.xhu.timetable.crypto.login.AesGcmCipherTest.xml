@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-02-01T10:30:34" hostname="potato-Legion-Y7000P-IRX9" time="0.141">
+  <properties/>
+  <testcase name="empty_plaintext_roundtrip" classname="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" time="0.122"/>
+  <testcase name="tampered_ciphertext_fails_decryption" classname="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" time="0.003"/>
+  <testcase name="different_nonces_produce_different_ciphertexts" classname="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" time="0.004"/>
+  <testcase name="wrong_key_fails_decryption" classname="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" time="0.001"/>
+  <testcase name="roundtrip_encryption_decryption" classname="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" time="0.002"/>
+  <testcase name="large_plaintext_roundtrip" classname="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" time="0.004"/>
+  <testcase name="wrong_nonce_fails_decryption" classname="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" time="0.002"/>
+  <testcase name="ciphertext_is_larger_than_plaintext" classname="vip.mystery0.xhu.timetable.crypto.login.AesGcmCipherTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

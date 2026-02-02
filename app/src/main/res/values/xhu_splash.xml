@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        统一启动页背景色，避免进入 Compose 之前先出现蓝色再快速切换的闪屏观感。
+        说明：
+        - windowSplashScreenBackground 仅支持纯色，这里使用与应用主题 primary 接近的红色。
+        - postSplashScreenTheme 保持为现有的 Theme.XhuTimetable，避免兼容性问题。
+     -->
+    <style name="XhuSplashTheme" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#E53935</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimationDuration">600</item>
+        <item name="postSplashScreenTheme">@style/Theme.XhuTimetable</item>
+    </style>
+</resources>

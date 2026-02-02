@@ -1,0 +1,20 @@
+-- Sync state per partition
+CREATE TABLE SyncState (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    studentId TEXT NOT NULL,
+    termYear INTEGER NOT NULL,
+    termIndex INTEGER NOT NULL,
+    tableName TEXT NOT NULL,
+    lastSyncAt INTEGER NOT NULL,
+    UNIQUE(studentId, termYear, termIndex, tableName)
+);
+
+-- Get last sync time for a partition and table
+selectLastSync:
+SELECT lastSyncAt FROM SyncState
+WHERE studentId = :studentId AND termYear = :termYear AND termIndex = :termIndex AND tableName = :tableName;
+
+-- Upsert sync state
+upsertSyncState:
+INSERT OR REPLACE INTO SyncState(studentId, termYear, termIndex, tableName, lastSyncAt)
+VALUES (?, ?, ?, ?, ?);

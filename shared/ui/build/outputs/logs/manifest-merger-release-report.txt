@@ -1,0 +1,14 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /home/potato/watermelon/xhu-timetable/shared/ui/src/androidMain/AndroidManifest.xml:1:1-13
+INJECTED from /home/potato/watermelon/xhu-timetable/shared/ui/src/androidMain/AndroidManifest.xml:1:1-13
+	package
+		INJECTED from /home/potato/watermelon/xhu-timetable/shared/ui/src/androidMain/AndroidManifest.xml
+uses-sdk
+INJECTED from /home/potato/watermelon/xhu-timetable/shared/ui/src/androidMain/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /home/potato/watermelon/xhu-timetable/shared/ui/src/androidMain/AndroidManifest.xml
+INJECTED from /home/potato/watermelon/xhu-timetable/shared/ui/src/androidMain/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /home/potato/watermelon/xhu-timetable/shared/ui/src/androidMain/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /home/potato/watermelon/xhu-timetable/shared/ui/src/androidMain/AndroidManifest.xml

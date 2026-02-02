@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/color/vector_tint_color.xml",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-ui-release-30:/color/vector_tint_color.xml"
+    },
+    {
+        "merged": "vip.mystery0.xhu.timetable.shared.ui-release-49:/color/vector_tint_theme_color.xml",
+        "source": "vip.mystery0.xhu.timetable.shared.ui-ui-release-30:/color/vector_tint_theme_color.xml"
+    }
+]

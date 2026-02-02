@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="indicatorTrackGapSize" format="dimension" />
+    <attr name="showMarker" format="boolean" />
+    <attr name="thumbHeight" format="reference|dimension" />
+    <attr name="thumbTrackGapSize" format="reference|dimension" />
+    <attr name="thumbWidth" format="reference|dimension" />
+    <attr name="trackInsideCornerSize" format="reference|dimension" />
+    <attr name="trackStopIndicatorSize" format="dimension" />
+</resources>

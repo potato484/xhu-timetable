@@ -1,0 +1,10 @@
+vip.mystery0.xhu.timetable.shared.network-release-0 /home/potato/watermelon/xhu-timetable/shared/core/build/intermediates/packaged_res/release/packageReleaseResources
+vip.mystery0.xhu.timetable.shared.network-pngs-1 /home/potato/watermelon/xhu-timetable/shared/network/build/generated/res/pngs/release
+vip.mystery0.xhu.timetable.shared.network-resValues-2 /home/potato/watermelon/xhu-timetable/shared/network/build/generated/res/resValues/release
+vip.mystery0.xhu.timetable.shared.network-mergeReleaseResources-3 /home/potato/watermelon/xhu-timetable/shared/network/build/intermediates/incremental/release/mergeReleaseResources/merged.dir
+vip.mystery0.xhu.timetable.shared.network-mergeReleaseResources-4 /home/potato/watermelon/xhu-timetable/shared/network/build/intermediates/incremental/release/mergeReleaseResources/stripped.dir
+vip.mystery0.xhu.timetable.shared.network-release-5 /home/potato/watermelon/xhu-timetable/shared/network/build/intermediates/merged_res/release/mergeReleaseResources
+vip.mystery0.xhu.timetable.shared.network-androidMain-6 /home/potato/watermelon/xhu-timetable/shared/network/src/androidMain/res
+vip.mystery0.xhu.timetable.shared.network-androidRelease-7 /home/potato/watermelon/xhu-timetable/shared/network/src/androidRelease/res
+vip.mystery0.xhu.timetable.shared.network-main-8 /home/potato/watermelon/xhu-timetable/shared/network/src/main/res
+vip.mystery0.xhu.timetable.shared.network-release-9 /home/potato/watermelon/xhu-timetable/shared/network/src/release/res

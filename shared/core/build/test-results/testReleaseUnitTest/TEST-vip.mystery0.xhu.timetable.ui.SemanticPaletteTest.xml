@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="vip.mystery0.xhu.timetable.ui.SemanticPaletteTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-02-01T10:30:34" hostname="potato-Legion-Y7000P-IRX9" time="0.005">
+  <properties/>
+  <testcase name="colorFor_distribution" classname="vip.mystery0.xhu.timetable.ui.SemanticPaletteTest" time="0.004"/>
+  <testcase name="colorFor_unicode_strings" classname="vip.mystery0.xhu.timetable.ui.SemanticPaletteTest" time="0.0"/>
+  <testcase name="colorFor_empty_string" classname="vip.mystery0.xhu.timetable.ui.SemanticPaletteTest" time="0.0"/>
+  <testcase name="colorFor_known_values" classname="vip.mystery0.xhu.timetable.ui.SemanticPaletteTest" time="0.001"/>
+  <testcase name="colorFor_is_deterministic" classname="vip.mystery0.xhu.timetable.ui.SemanticPaletteTest" time="0.0"/>
+  <testcase name="colorFor_different_inputs_may_differ" classname="vip.mystery0.xhu.timetable.ui.SemanticPaletteTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
