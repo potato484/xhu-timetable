@@ -72,4 +72,5 @@ adb install -r "app/build/outputs/apk/debug/androidApp-debug.apk"
 ## 参考
 
 - `XhuTimetable-master/`：用于对照/参考的历史版本代码（本仓库内仅作参考）。
+项目地址：[XhuTimetable](https://github.com/Mystery00/XhuTimetable)
 
